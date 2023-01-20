@@ -1,13 +1,7 @@
-import Head from "next/head";
 import Image from "next/image";
-import { Inter } from "@next/font/google";
-import styles from "@/styles/Home.module.css";
 import { useEffect, useState } from "react";
 import * as io from "Socket.IO-client";
-
-interface IMsg {
-  imageName: string;
-}
+import { ChangeInputRequest } from "../types/ChangeInputRequest";
 
 export default function Home() {
   // connected flag
@@ -19,7 +13,6 @@ export default function Home() {
   }, []);
 
   const socketInitializer = async () => {
-    await fetch("/api/socket");
     const socket = io.connect("http://localhost:3000", {
       path: "/api/socket",
     });
@@ -29,7 +22,8 @@ export default function Home() {
       setConnected(true);
     });
 
-    socket.on("update-input", (msg: IMsg) => {
+    socket.on("toggle-image", (msg: ChangeInputRequest) => {
+      console.log(msg.imageName);
       setImg(msg.imageName);
     });
   };
@@ -38,8 +32,12 @@ export default function Home() {
     <>
       <div>
         {connected ? (
-          <div>
-            <span>connected!</span>
+          <div className={"imageContainer"}>
+            {img !== "" ? (
+              <Image alt="served_image" src={`/${img}`} sizes="100%" fill />
+            ) : (
+              <span>waiting for an image</span>
+            )}
           </div>
         ) : (
           <div>
