@@ -1,6 +1,6 @@
 import Image from "next/image";
 import { useEffect, useState } from "react";
-import * as io from "Socket.IO-client";
+import * as io from "socket.io-client";
 import { ChangeInputRequest } from "../types/ChangeInputRequest";
 
 export default function Home() {
