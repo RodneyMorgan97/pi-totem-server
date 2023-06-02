@@ -7,7 +7,6 @@ export default function Home() {
   // connected flag
   const [connected, setConnected] = useState(false);
   const [img, setImg] = useState("");
-
   useEffect(() => {
     socketInitializer();
   }, []);
@@ -23,6 +22,7 @@ export default function Home() {
     });
 
     socket.on("toggle-image", (msg: ChangeInputRequest) => {
+      console.log("received toggle-image command");
       console.log(msg.imageName);
       setImg(msg.imageName);
     });
@@ -34,7 +34,12 @@ export default function Home() {
         {connected ? (
           <div className={"imageContainer"}>
             {img !== "" ? (
-              <Image alt="served_image" src={`/${img}`} sizes="100%" fill />
+              <Image
+                alt="served_image"
+                src={`/images/${img}`}
+                sizes="100%"
+                fill
+              />
             ) : (
               <span>waiting for an image</span>
             )}
