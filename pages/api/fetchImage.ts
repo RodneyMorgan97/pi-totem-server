@@ -9,8 +9,7 @@ export default async function fetchImages(
   res: NextApiResponse
 ) {
   await NextCors(req, res, {
-    // Options
-    methods: ["GET", "POST", "OPTIONS"],
+    methods: ["GET", "OPTIONS"],
     origin: "*",
     optionsSuccessStatus: 200,
   });
@@ -19,25 +18,27 @@ export default async function fetchImages(
     return;
   }
 
+  const page = req.query.page ? Number(req.query.page) : 0;
+
   try {
     const imageDir = path.join(process.cwd(), "public", "images");
     const files = fs.readdirSync(imageDir);
 
-    const imagesData = await Promise.all(
-      files.map(async (file) => {
-        const imagePath = path.join(imageDir, file);
+    if (page < 0 || page >= files.length) {
+      res.status(400).json({ message: "Invalid page number" });
+      return;
+    }
 
-        // Compress and convert image to base64
-        const buffer = await sharp(imagePath)
-          .resize(480, null) // This will resize the width to 480 and automatically adjust the height to maintain the aspect ratio
-          .toBuffer();
-        const base64 = buffer.toString("base64");
+    const file = files[page];
+    const imagePath = path.join(imageDir, file);
+    const buffer = await sharp(imagePath, { animated: true, pages: -1 })
+      .resize(480, null)
+      .toBuffer();
+    const base64 = buffer.toString("base64");
 
-        return { name: file, base64 };
-      })
-    );
+    const imageData = { name: file, base64 };
 
-    res.status(200).json(imagesData);
+    res.status(200).json(imageData);
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Server error" });

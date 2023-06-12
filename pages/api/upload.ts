@@ -1,4 +1,4 @@
-import { IncomingForm, Fields } from "formidable";
+import formidable, { IncomingForm } from "formidable";
 import { NextApiRequest, NextApiResponse } from "next";
 import fs from "fs";
 import path from "path";
@@ -10,61 +10,75 @@ export const config = {
   },
 };
 
-interface File {
-  size: number;
-  path: string;
-  name: string;
-  type: string;
-  lastModifiedDate?: Date;
-  hash?: string;
-  length?: number;
-  filename?: string;
-  mime?: string;
-}
-
-interface FormidableData {
-  fields: Fields;
-  files: {
-    [name: string]: File;
-  };
+function sanitizeFilename(filename: string) {
+  return filename.replace(/[\/\\?%*:|"<>]/g, "-");
 }
 
 const uploadHandler = async (req: NextApiRequest, res: NextApiResponse) => {
   await NextCors(req, res, {
-    // Options
     methods: ["GET", "POST", "OPTIONS"],
     origin: "*",
     optionsSuccessStatus: 200,
   });
+
   if (req.method === "POST") {
-    const data: FormidableData = await new Promise((resolve, reject) => {
-      const form = new IncomingForm();
+    const form = new IncomingForm();
+    const dir = path.join(process.cwd(), "public", "images");
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
 
-      form.parse(req, (err: any, fields: Fields, files: any) => {
-        if (err) return reject(err);
-        resolve({ fields, files });
-      });
+    let oldPath: string;
+    let newPath: string;
+
+    form.on("file", function (name, file: formidable.File) {
+      console.log(file);
+      console.log(name);
+      if (name) {
+        const fileName = sanitizeFilename(name);
+        oldPath = file.filepath;
+        console.log("oldpath = ", oldPath);
+
+        console.log("the filename for the incoming file is: ", fileName);
+
+        newPath = path.join(
+          process.cwd(),
+          "public",
+          "images",
+          sanitizeFilename(name)
+        );
+        console.log("newPath = ", newPath);
+        if (fs.existsSync(newPath)) {
+          res
+            .status(409)
+            .json({ error: "A file with this name already exists" });
+          return;
+        }
+
+        console.log("Old Path: ", oldPath);
+        console.log("New Path: ", newPath);
+      } else {
+        console.error("Original file name not provided");
+      }
     });
 
-    const file = data.files?.file;
-    if (!file) return res.status(400).json({ error: "No file uploaded" });
+    form.parse(req, async (err, fields, files) => {
+      if (err) {
+        res.status(500).json({ error: err });
+        return;
+      }
 
-    const readStream = fs.createReadStream(file.path);
-    const writeStream = fs.createWriteStream(
-      path.join(process.cwd(), "public", "images", file.name)
-    );
-
-    readStream.pipe(writeStream);
-
-    readStream.on("end", () => {
-      fs.unlink(file.path, (err) => {
-        if (err) console.error("Error: ", err);
-      });
+      try {
+        await fs.promises.rename(oldPath, newPath);
+        console.log("File renamed and moved successfully");
+        res.status(200).json({ message: "Upload successful" });
+      } catch (renameErr) {
+        console.error("Error renaming file: ", renameErr);
+        res.status(500).json({ error: "Failed to rename and move file" });
+      }
     });
-
-    return res.status(200).json({ message: "Upload successful" });
   } else {
-    return res.status(405).json({ error: "Method not allowed" });
+    res.status(405).json({ error: "Method not allowed" });
   }
 };
 
