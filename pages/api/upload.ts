@@ -32,31 +32,22 @@ const uploadHandler = async (req: NextApiRequest, res: NextApiResponse) => {
     let newPath: string;
 
     form.on("file", function (name, file: formidable.File) {
-      console.log(file);
-      console.log(name);
       if (name) {
         const fileName = sanitizeFilename(name);
         oldPath = file.filepath;
-        console.log("oldpath = ", oldPath);
-
-        console.log("the filename for the incoming file is: ", fileName);
-
         newPath = path.join(
           process.cwd(),
           "public",
           "images",
           sanitizeFilename(name)
         );
-        console.log("newPath = ", newPath);
+
         if (fs.existsSync(newPath)) {
           res
             .status(409)
             .json({ error: "A file with this name already exists" });
           return;
         }
-
-        console.log("Old Path: ", oldPath);
-        console.log("New Path: ", newPath);
       } else {
         console.error("Original file name not provided");
       }
@@ -70,7 +61,6 @@ const uploadHandler = async (req: NextApiRequest, res: NextApiResponse) => {
 
       try {
         await fs.promises.rename(oldPath, newPath);
-        console.log("File renamed and moved successfully");
         res.status(200).json({ message: "Upload successful" });
       } catch (renameErr) {
         console.error("Error renaming file: ", renameErr);
